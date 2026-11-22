@@ -17,7 +17,7 @@ const CHARACTERS = {
   selefi: { name: 'セレフィ', color: '#bfefff', skill: '氷シールド (守り＋周りをスロー)', portrait: 'assets/portraits/selefi.png', cooldown: 10000 },
 };
 const ARENA = 21;              // プレイエリアは -ARENA..ARENA
-const GAME_DURATION = 180;     // 3分
+const GAME_DURATION = 90;      // 1分30秒
 const ORB_COUNT = 12;
 
 // ============ キャラ選択画面 ============
@@ -405,7 +405,7 @@ function updateGame(dt) {
   if (phase !== 'playing') return;
   const now = Date.now();
   timeLeft -= dt;
-  if (!missionSpawned && timeLeft <= 90) {
+  if (!missionSpawned && timeLeft <= 45) {
     missionSpawned = true;
     orbs.push(spawnOrb('mission'));
     showEvent('ミッション！ 中央の金クリスタルは5点！');
