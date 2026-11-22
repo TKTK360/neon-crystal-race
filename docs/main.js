@@ -107,6 +107,14 @@ document.getElementById('joinBtn').onclick = () => {
   document.getElementById('joinScreen').classList.add('hidden');
   document.getElementById('gameScreen').classList.remove('hidden');
   document.getElementById('skillName').textContent = CHARACTERS[selectedChar].skill;
+  // 左上のプレイヤーパネルに選択キャラを表示
+  const pc = CHARACTERS[selectedChar];
+  document.getElementById('ppPortrait').src = pc.portrait;
+  const ppChar = document.getElementById('ppChar');
+  ppChar.textContent = pc.name;
+  ppChar.style.color = pc.color;
+  document.getElementById('ppName').textContent = name;
+  document.getElementById('playerPanel').style.borderColor = pc.color;
   initThree();
   setupRace(name, selectedChar);
 };
@@ -199,7 +207,7 @@ function dashEnd(id) {
 }
 function skillTap() {
   const p = me();
-  if (p) useSkill(p);   // クールダウン判定は useSkill 側
+  if (p && phase === 'playing' && !useSkill(p)) flashCd();   // クールダウン中なら控えめに知らせる
 }
 
 // 入力イベントは Pointer Events を基本にし、無い環境では Touch Events にフォールバックする。
@@ -267,12 +275,55 @@ function showEvent(text) {
   setTimeout(() => div.remove(), 5000);
 }
 
+// ============ トースト (スキル発動・金クリスタルの告知) ============
+// タイマーの下に最大3件まで重ねて表示し、約1.8秒で自動消滅する。タッチは透過する
+const toastsEl = document.getElementById('toasts');
+function pushToast(el) {
+  while (toastsEl.children.length >= 3) toastsEl.firstChild.remove();
+  toastsEl.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 260); }, 1800);
+}
+// スキルの短い名前はキャラ定義の説明文から切り出す (例: 'ポータルワープ (前方へ瞬間移動)' → 'ポータルワープ')
+function skillLabel(charId) { return CHARACTERS[charId].skill.split(' (')[0]; }
+function showSkillToast(pl) {
+  const def = CHARACTERS[pl.charId];
+  const el = document.createElement('div');
+  el.className = 'toast' + (pl.id === MY_ID ? ' mine' : '');
+  el.style.borderColor = def.color;
+  el.innerHTML = `<img src="${def.portrait}" alt=""><span><b style="color:${def.color}">${def.name}</b>『${skillLabel(pl.charId)}』発動！</span>`;
+  pushToast(el);
+}
+function showGoldToast(html, charId = null) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.borderColor = '#ffd94d';
+  const icon = charId ? `<img src="${CHARACTERS[charId].portrait}" alt="">` : '<span class="goldIcon">◆</span>';
+  el.innerHTML = `${icon}<span>${html}</span>`;
+  pushToast(el);
+}
+// クールダウン中のスキル試行への控えめなフィードバック (自分のスキル表示のみ)
+let cdFlashTimer = null;
+function flashCd() {
+  const box = document.getElementById('skillBox');
+  box.classList.remove('cd-flash');
+  void box.offsetWidth;
+  box.classList.add('cd-flash');
+  clearTimeout(cdFlashTimer);
+  cdFlashTimer = setTimeout(() => box.classList.remove('cd-flash'), 360);
+}
+
 // ============ オーブ取得 / スキル (サーバー版のロジックをローカル化) ============
 function collectOrb(r, orb) {
   orbs = orbs.filter(o => o.id !== orb.id);
   r.score += orb.value;
-  if (orb.kind !== 'mission') orbs.push(spawnOrb());
-  showEvent(`${r.name} が${orb.kind === 'mission' ? 'ミッション' : ''}クリスタルをゲット！ (+${orb.value})`);
+  if (orb.kind === 'mission') {
+    // 金クリスタル取得はトーストで告知 (通常クリスタルは従来どおりイベントログ)
+    showGoldToast(`<b style="color:${CHARACTERS[r.charId].color}">${CHARACTERS[r.charId].name}</b> が金クリスタルをゲット！ (+${orb.value})`, r.charId);
+  } else {
+    orbs.push(spawnOrb());
+    showEvent(`${r.name} がクリスタルをゲット！ (+${orb.value})`);
+  }
 }
 function checkOrbPickup(r) {
   for (const o of [...orbs]) if (dist(r, o) < 1.3) collectOrb(r, o);
@@ -281,8 +332,9 @@ function checkOrbPickup(r) {
 function useSkill(pl) {
   const now = Date.now();
   const def = CHARACTERS[pl.charId];
-  if (!def || phase !== 'playing' || now < pl.cooldownUntil) return;
+  if (!def || phase !== 'playing' || now < pl.cooldownUntil) return false;
   pl.cooldownUntil = now + def.cooldown;
+  showSkillToast(pl);   // 発動成功した時だけトースト (クールダウン中は出さない)
   const fx = Math.sin(pl.angle), fz = Math.cos(pl.angle);
 
   switch (pl.charId) {
@@ -330,6 +382,7 @@ function useSkill(pl) {
       }
       break;
   }
+  return true;
 }
 
 // ============ 移動 ============
@@ -364,7 +417,10 @@ function updatePlayer(dt, now) {
     p.z = clampArena(p.z + dz * speed * mag * dt);
     p.angle = Math.atan2(dx, dz);
   }
-  if (keys[' '] || keys['e']) useSkill(p);
+  const skillKey = keys[' '] || keys['e'];
+  if (skillKey && !updatePlayer._skillKeyDown && now < p.cooldownUntil) flashCd();
+  updatePlayer._skillKeyDown = !!skillKey;
+  if (skillKey) useSkill(p);
 }
 
 // ============ CPUボット ============
@@ -408,7 +464,7 @@ function updateGame(dt) {
   if (!missionSpawned && timeLeft <= 45) {
     missionSpawned = true;
     orbs.push(spawnOrb('mission'));
-    showEvent('ミッション！ 中央の金クリスタルは5点！');
+    showGoldToast('ミッション！ 中央に<b>金クリスタル</b>出現（5点）');
   }
   // 罠の期限切れ & 効果
   traps = traps.filter(tr => tr.until > now);
