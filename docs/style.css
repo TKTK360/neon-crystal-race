@@ -1,16 +1,20 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { overscroll-behavior: none; }
-body { font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif; background: #07031a; color: #eef; overflow: hidden; }
+body { font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif; background: #07031a; color: #eef; overflow-x: hidden; }
 .hidden { display: none !important; }
 
 /* ---- 参加画面 ---- */
-#joinScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px;
+#joinScreen { height: 100vh; height: 100dvh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 14px;
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
   background: radial-gradient(ellipse at 50% 30%, #2a1060 0%, #07031a 70%); }
-#joinScreen h1 { font-size: 30px; color: #ff7ad9; text-shadow: 0 0 18px #a64dff, 0 0 4px #fff; letter-spacing: 2px; }
-.sub { color: #9fd8ff; }
-#nameInput { padding: 10px 14px; font-size: 16px; border-radius: 10px; border: 2px solid #a64dff; background: #150a38; color: #fff; width: 280px; text-align: center; }
-#charGrid { display: grid; grid-template-columns: repeat(4, 128px); gap: 10px; }
-.charCard { border: 3px solid #333; border-radius: 12px; overflow: hidden; cursor: pointer; background: #12082e; transition: transform .1s, border-color .1s; text-align: center; }
+/* 収まる時は中央寄せ、溢れる時はスクロールできるように auto マージンで吸収 */
+#joinScreen > :first-child { margin-top: auto; }
+#joinScreen > :last-child { margin-bottom: auto; }
+#joinScreen h1 { font-size: 30px; color: #ff7ad9; text-shadow: 0 0 18px #a64dff, 0 0 4px #fff; letter-spacing: 2px; text-align: center; }
+.sub { color: #9fd8ff; text-align: center; }
+#nameInput { padding: 10px 14px; font-size: 16px; border-radius: 10px; border: 2px solid #a64dff; background: #150a38; color: #fff; width: min(280px, 86vw); text-align: center; }
+#charGrid { display: grid; grid-template-columns: repeat(4, 128px); gap: 10px; max-width: 100%; }
+.charCard { border: 3px solid #333; border-radius: 12px; overflow: hidden; cursor: pointer; background: #12082e; transition: transform .1s, border-color .1s; text-align: center; min-width: 0; }
 .charCard:hover { transform: translateY(-3px); }
 .charCard.selected { border-color: #ffd94d; box-shadow: 0 0 16px #ffd94d88; }
 .charCard img { width: 100%; height: 110px; object-fit: cover; object-position: top; display: block; }
@@ -20,16 +24,16 @@ body { font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif; backgro
   background: linear-gradient(90deg, #ff4da6, #a64dff); box-shadow: 0 0 18px #a64dff99; }
 #joinBtn:hover { filter: brightness(1.2); }
 .error { color: #ff6b7a; min-height: 1em; }
-.howto { color: #889; font-size: 13px; }
+.howto { color: #889; font-size: 13px; text-align: center; max-width: 92vw; }
 .touchOnly { display: none; }
 body.touch .touchOnly { display: block; }
 
 /* ---- ゲーム画面 / HUD ---- */
-#gameScreen { position: fixed; inset: 0; touch-action: none; }
+#gameScreen { position: fixed; inset: 0; height: 100vh; height: 100dvh; touch-action: none; }
 #gameCanvas { width: 100%; height: 100%; display: block; touch-action: none; }
-#hud { position: absolute; inset: 0; pointer-events: none; }
+#hud { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 #timer { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-size: 34px; font-weight: bold; color: #fff;
-  text-shadow: 0 0 12px #5ec8ff; background: #12082ecc; padding: 2px 22px; border-radius: 999px; border: 2px solid #5ec8ff66; }
+  text-shadow: 0 0 12px #5ec8ff; background: #12082ecc; padding: 2px 22px; border-radius: 999px; border: 2px solid #5ec8ff66; white-space: nowrap; }
 #scores { position: absolute; top: 12px; left: 12px; background: #12082ecc; border: 2px solid #a64dff66; border-radius: 12px; padding: 10px 14px; font-size: 15px; line-height: 1.6; min-width: 170px; }
 #scores .me { color: #ffd94d; font-weight: bold; }
 #bars { position: absolute; left: 12px; bottom: 12px; width: 230px; background: #12082ecc; border-radius: 12px; padding: 10px; border: 2px solid #ffffff22; }
@@ -43,38 +47,112 @@ body.touch .touchOnly { display: block; }
 #skillBox { position: absolute; right: 12px; bottom: 12px; background: #12082ecc; border: 2px solid #ff7ad966; border-radius: 12px; padding: 10px 16px; font-size: 15px; }
 #skillCd { color: #ffd94d; font-weight: bold; }
 #minimap { position: absolute; top: 12px; right: 12px; background: #0a0620dd; border: 2px solid #5ec8ff66; border-radius: 12px; }
-#eventLog { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%); text-align: center; font-size: 15px; color: #ffe9fb; text-shadow: 0 1px 4px #000; line-height: 1.5; }
-#centerMsg { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 42px; font-weight: bold; color: #ffd94d; text-shadow: 0 0 24px #ff4da6; text-align: center; }
+#eventLog { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%); text-align: center; font-size: 15px; color: #ffe9fb; text-shadow: 0 1px 4px #000; line-height: 1.5; width: max-content; max-width: 94vw; }
+#centerMsg { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 42px; font-weight: bold; color: #ffd94d; text-shadow: 0 0 24px #ff4da6; text-align: center; width: max-content; max-width: 94vw; }
 
 /* ---- 結果パネル (1人用版で追加) ---- */
-#resultPanel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: auto;
-  background: #12082ef2; border: 2px solid #ffd94d88; border-radius: 16px; padding: 24px 34px; text-align: center; min-width: 320px;
+#resultPanel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: auto; z-index: 80;
+  background: #12082ef2; border: 2px solid #ffd94d88; border-radius: 16px; padding: 24px 34px; text-align: center;
+  width: max-content; min-width: 320px; max-width: 94vw; max-height: 92dvh; overflow-y: auto;
   box-shadow: 0 0 32px #a64dff66; }
 #resultPanel h2 { color: #ffd94d; margin-bottom: 12px; font-size: 26px; }
 #resultList { font-size: 17px; line-height: 1.9; margin-bottom: 16px; text-align: left; }
 #resultList .me { color: #ffd94d; font-weight: bold; }
-#resultPanel button { padding: 10px 24px; font-size: 15px; font-weight: bold; color: #fff; border: none; border-radius: 999px; cursor: pointer; margin: 0 4px;
+#resultPanel button { padding: 10px 24px; font-size: 15px; font-weight: bold; color: #fff; border: none; border-radius: 999px; cursor: pointer; margin: 4px;
   background: linear-gradient(90deg, #ff4da6, #a64dff); }
 #resultPanel button:hover { filter: brightness(1.2); }
 #backBtn { background: linear-gradient(90deg, #3d7bff, #5ec8ff) !important; }
 
 /* ---- タッチ操作 (タッチ端末のみ・ゲーム画面内だけ表示) ---- */
-#touchControls { display: none; position: absolute; inset: 0; pointer-events: none; }
+/* 画面 (ビューポート) 基準で固定し、HUD の都合で切れたり触れなくなったりしないようにする */
+#touchControls { display: none; position: fixed; inset: 0; z-index: 60; pointer-events: none; }
 body.touch #touchControls { display: block; }
-#joystick { position: absolute; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
-  left: calc(18px + env(safe-area-inset-left)); bottom: calc(118px + env(safe-area-inset-bottom));
-  width: 120px; height: 120px; border-radius: 50%;
+/* 左半分はスティック用のタッチゾーン: 触れた場所にスティックが出る (フローティング) */
+#joyZone { position: absolute; left: 0; top: 0; width: 55%; height: 100%; pointer-events: auto; touch-action: none;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+#joystick { position: fixed; z-index: 61; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  left: calc(20px + env(safe-area-inset-left)); bottom: calc(110px + env(safe-area-inset-bottom));
+  width: 136px; height: 136px; border-radius: 50%;
   background: #12082e99; border: 2px solid #5ec8ff88; box-shadow: 0 0 16px #5ec8ff44, inset 0 0 24px #a64dff33; }
-#joystickKnob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%;
+#joystick.active { border-color: #5ec8ff; background: #12082ebd; }
+#joystickKnob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; border-radius: 50%; pointer-events: none;
   transform: translate(-50%, -50%);
   background: radial-gradient(circle at 35% 30%, #ff8ac2, #ff4da6 60%, #a64dff);
   border: 2px solid #ffd9f2aa; box-shadow: 0 0 14px #ff4da699; }
-#touchButtons { position: absolute; pointer-events: none;
-  right: calc(18px + env(safe-area-inset-right)); bottom: calc(118px + env(safe-area-inset-bottom));
+#touchButtons { position: fixed; z-index: 61; pointer-events: none;
+  right: calc(20px + env(safe-area-inset-right)); bottom: calc(110px + env(safe-area-inset-bottom));
   display: flex; align-items: flex-end; gap: 14px; }
 #touchButtons button { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
   border-radius: 50%; color: #fff; font-weight: bold; cursor: pointer;
   background: #12082eb3; text-shadow: 0 0 6px #000; }
-#btnDash { width: 64px; height: 64px; font-size: 12px; border: 2px solid #5ec8ffaa; box-shadow: 0 0 12px #5ec8ff44; }
-#btnSkill { width: 76px; height: 76px; font-size: 15px; border: 2px solid #ff7ad9aa; box-shadow: 0 0 14px #ff4da655; }
+#btnDash { width: 68px; height: 68px; font-size: 12px; border: 2px solid #5ec8ffaa; box-shadow: 0 0 12px #5ec8ff44; }
+#btnSkill { width: 80px; height: 80px; font-size: 15px; border: 2px solid #ff7ad9aa; box-shadow: 0 0 14px #ff4da655; }
 #touchButtons button.active { filter: brightness(1.5); transform: scale(0.93); }
+
+/* ================================================================
+   スマホ対応 (縦持ち)
+   ================================================================ */
+@media (max-width: 768px) {
+  /* --- 選択画面: 2カラムに組み替えて縦スクロールで全部見せる --- */
+  #joinScreen { gap: 10px; padding: 14px 12px calc(16px + env(safe-area-inset-bottom)); }
+  #joinScreen h1 { font-size: 21px; letter-spacing: 1px; }
+  .sub { font-size: 13px; }
+  #charGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(94vw, 360px); gap: 8px; }
+  .charCard img { height: 84px; }
+  .charCard .cname { font-size: 14px; }
+  .charCard .cskill { font-size: 10px; }
+  #joinBtn { padding: 12px 34px; font-size: 17px; }
+  .howto { font-size: 12px; }
+
+  /* --- HUD をコンパクトに --- */
+  #timer { top: 8px; font-size: 20px; padding: 2px 14px; }
+  #scores { top: 8px; left: 8px; min-width: 0; max-width: 40vw; padding: 6px 8px; font-size: 11px; line-height: 1.45; border-radius: 10px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #minimap { top: 8px; right: 8px; width: 84px; height: 84px; border-radius: 10px; }
+  #bars { left: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); width: 148px; padding: 6px 8px; border-radius: 10px; }
+  .bar { font-size: 10px; gap: 5px; margin: 3px 0; }
+  .bar span { width: 20px; }
+  .bar .track { height: 9px; }
+  #skillBox { right: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); max-width: 46vw; padding: 6px 10px; font-size: 11px; border-radius: 10px; }
+  #eventLog { bottom: auto; top: 106px; font-size: 12px; line-height: 1.4; }
+  #centerMsg { font-size: 25px; }
+  #resultPanel { min-width: 0; width: min(92vw, 340px); padding: 18px 16px; }
+  #resultPanel h2 { font-size: 21px; }
+  #resultList { font-size: 14px; line-height: 1.7; }
+  #resultPanel button { padding: 10px 18px; font-size: 14px; }
+
+  /* スティック/ボタンは小さなバーの上に置く */
+  #joystick { bottom: calc(96px + env(safe-area-inset-bottom)); left: calc(14px + env(safe-area-inset-left)); }
+  #touchButtons { bottom: calc(96px + env(safe-area-inset-bottom)); right: calc(14px + env(safe-area-inset-right)); }
+}
+
+/* ================================================================
+   スマホ横持ち (高さが低い画面) — HUD をさらに低く
+   ================================================================ */
+@media (max-height: 500px) and (orientation: landscape) {
+  #joinScreen { gap: 8px; padding: 10px 12px; }
+  #joinScreen h1 { font-size: 19px; }
+  #charGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); width: min(94vw, 520px); gap: 8px; }
+  .charCard img { height: 52px; }
+  .charCard .cskill { display: none; }
+  #joinBtn { padding: 9px 30px; font-size: 15px; }
+  .howto { font-size: 11px; }
+
+  #timer { top: 6px; font-size: 17px; padding: 1px 12px; }
+  #scores { top: 6px; left: 6px; min-width: 0; padding: 4px 8px; font-size: 10px; line-height: 1.4; }
+  #minimap { top: 6px; right: 6px; width: 62px; height: 62px; }
+  #bars { left: 6px; bottom: 6px; width: 128px; padding: 5px 7px; }
+  .bar { font-size: 9px; margin: 2px 0; }
+  .bar .track { height: 8px; }
+  #skillBox { right: 6px; bottom: 6px; padding: 5px 9px; font-size: 10px; }
+  #eventLog { bottom: auto; top: 78px; font-size: 11px; }
+  #centerMsg { font-size: 22px; }
+  #resultPanel { min-width: 0; width: min(92vw, 340px); padding: 14px 16px; }
+  #resultList { font-size: 13px; line-height: 1.55; margin-bottom: 10px; }
+
+  #joystick { width: 112px; height: 112px; bottom: calc(72px + env(safe-area-inset-bottom)); }
+  #joystickKnob { width: 48px; height: 48px; }
+  #touchButtons { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  #btnDash { width: 56px; height: 56px; }
+  #btnSkill { width: 66px; height: 66px; font-size: 13px; }
+}

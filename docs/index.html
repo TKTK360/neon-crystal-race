@@ -19,7 +19,7 @@
     <button id="joinBtn">▶ ゲームスタート</button>
     <p id="joinError" class="error"></p>
     <p class="howto">操作: WASD / 矢印キーで移動 ・ Shiftでダッシュ ・ Space / Eでスキル</p>
-    <p class="howto touchOnly">タッチ操作: 左下スティックで移動 ・ ダッシュボタン長押しでダッシュ ・ スキルボタンでスキル</p>
+    <p class="howto touchOnly">タッチ操作: 画面の左側をタッチしてそのままドラッグで移動 ・ ダッシュボタン長押しでダッシュ ・ スキルボタンでスキル</p>
     <p class="howto">残りの3枠はCPUが別キャラで参加します</p>
   </div>
 
@@ -39,6 +39,7 @@
       <div id="eventLog"></div>
       <!-- タッチ操作 (タッチ端末のみ表示) -->
       <div id="touchControls">
+        <div id="joyZone"></div>
         <div id="joystick"><div id="joystickKnob"></div></div>
         <div id="touchButtons">
           <button id="btnDash" type="button">ダッシュ</button>

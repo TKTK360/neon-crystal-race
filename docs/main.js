@@ -116,77 +116,144 @@ window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if (
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
 // ============ タッチ操作 (仮想ジョイスティック + ボタン) ============
-// キーボードと同じ入力経路に流す: 移動は touchVec / keys、ダッシュは keys['shift']、スキルは useSkill()
+// キーボードと同じ入力経路に流す: 移動は touchVec、ダッシュは keys['shift']、スキルは useSkill()
+// スティックはフローティング式: 画面左側のどこを触っても、その場所にスティックが出てドラッグで移動する
 const touchVec = { x: 0, z: 0, active: false };
-const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-if (isTouchDevice) document.body.classList.add('touch');
+
+// タッチ端末判定: 初期チェックに加え「実際にタッチされたら有効化」するフォールバックを用意する
+// (pointer: coarse が効かない端末・ブラウザでも、最初のタッチで必ず UI が出るように)
+function enableTouchUI() { document.body.classList.add('touch'); }
+if (window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window) enableTouchUI();
+window.addEventListener('touchstart', enableTouchUI, { once: true, passive: true });
+window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') enableTouchUI(); }, { once: true });
 
 const joyEl = document.getElementById('joystick');
 const joyKnob = document.getElementById('joystickKnob');
-const JOY_RADIUS = 40;   // ノブの最大移動量 (px)
-const JOY_DEADZONE = 0.15;
-let joyPointerId = null;
+const joyZone = document.getElementById('joyZone');
+const btnDash = document.getElementById('btnDash');
+const btnSkill = document.getElementById('btnSkill');
+const JOY_RADIUS = 42;   // ノブの最大移動量 (px)
+const JOY_DEADZONE = 0.12;
+let joyId = null;        // 操作中のポインタ/タッチの ID (スティック専用に追跡)
+let joyCx = 0, joyCy = 0; // スティック中心 (ビューポート座標)
 
 function setKnob(ox, oy) {
   joyKnob.style.transform = `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px))`;
 }
-function joyUpdate(e) {
-  const rect = joyEl.getBoundingClientRect();
-  let ox = e.clientX - (rect.left + rect.width / 2);
-  let oy = e.clientY - (rect.top + rect.height / 2);
+// スティックの土台を触れた場所へ移動する (画面端ではみ出さないようクランプ)
+function joyPlace(cx, cy) {
+  const r = (joyEl.offsetWidth || 136) / 2;
+  const x = Math.max(r + 4, Math.min(window.innerWidth - r - 4, cx));
+  const y = Math.max(r + 4, Math.min(window.innerHeight - r - 4, cy));
+  joyEl.style.left = (x - r) + 'px';
+  joyEl.style.top = (y - r) + 'px';
+  joyEl.style.right = 'auto';
+  joyEl.style.bottom = 'auto';
+  joyCx = x; joyCy = y;
+}
+function joyHome() {
+  joyEl.style.left = ''; joyEl.style.top = ''; joyEl.style.right = ''; joyEl.style.bottom = '';
+}
+function joyStart(id, x, y) {
+  if (joyId !== null || phase !== 'playing') return false;
+  joyId = id;
+  joyPlace(x, y);
+  joyEl.classList.add('active');
+  joyMove(id, x, y);
+  return true;
+}
+function joyMove(id, x, y) {
+  if (id !== joyId) return;
+  let ox = x - joyCx, oy = y - joyCy;
   const len = Math.hypot(ox, oy);
   if (len > JOY_RADIUS) { ox = ox / len * JOY_RADIUS; oy = oy / len * JOY_RADIUS; }
   setKnob(ox, oy);
+  // 軸対応は WASD と同一: 上へ倒す = 画面奥 (-z) = W
   let vx = ox / JOY_RADIUS, vz = oy / JOY_RADIUS;
   if (Math.hypot(vx, vz) < JOY_DEADZONE) { vx = 0; vz = 0; }
   touchVec.x = vx; touchVec.z = vz; touchVec.active = true;
 }
-function joyReset() {
-  joyPointerId = null;
+function joyEnd(id) {
+  if (id !== joyId) return;
+  joyId = null;
   touchVec.x = 0; touchVec.z = 0; touchVec.active = false;
   setKnob(0, 0);
+  joyEl.classList.remove('active');
+  joyHome();
 }
-joyEl.addEventListener('pointerdown', e => {
-  if (joyPointerId !== null) return;
-  joyPointerId = e.pointerId;
-  joyEl.setPointerCapture(e.pointerId);
-  e.preventDefault();
-  joyUpdate(e);
-});
-joyEl.addEventListener('pointermove', e => { if (e.pointerId === joyPointerId) joyUpdate(e); });
-joyEl.addEventListener('pointerup', e => { if (e.pointerId === joyPointerId) joyReset(); });
-joyEl.addEventListener('pointercancel', e => { if (e.pointerId === joyPointerId) joyReset(); });
 
-// ダッシュボタン: 押している間だけ Shift と同じ扱い
-const btnDash = document.getElementById('btnDash');
-let dashPointerId = null;
-btnDash.addEventListener('pointerdown', e => {
-  if (dashPointerId !== null) return;
-  dashPointerId = e.pointerId;
-  btnDash.setPointerCapture(e.pointerId);
+// ---- ダッシュボタン: 押している間だけ Shift と同じ扱い ----
+let dashId = null;
+function dashStart(id) {
+  if (dashId !== null) return false;
+  dashId = id;
   keys['shift'] = true;
   btnDash.classList.add('active');
-  e.preventDefault();
-});
-function dashEnd(e) {
-  if (e.pointerId !== dashPointerId) return;
-  dashPointerId = null;
+  return true;
+}
+function dashEnd(id) {
+  if (id !== dashId) return;
+  dashId = null;
   keys['shift'] = false;
   btnDash.classList.remove('active');
 }
-btnDash.addEventListener('pointerup', dashEnd);
-btnDash.addEventListener('pointercancel', dashEnd);
-
-// スキルボタン: タップで Space / E と同じ発動 (クールダウンは useSkill 側で管理)
-const btnSkill = document.getElementById('btnSkill');
-btnSkill.addEventListener('pointerdown', e => {
-  e.preventDefault();
-  btnSkill.classList.add('active');
+function skillTap() {
   const p = me();
-  if (p) useSkill(p);
-});
-btnSkill.addEventListener('pointerup', () => btnSkill.classList.remove('active'));
-btnSkill.addEventListener('pointercancel', () => btnSkill.classList.remove('active'));
+  if (p) useSkill(p);   // クールダウン判定は useSkill 側
+}
+
+// 入力イベントは Pointer Events を基本にし、無い環境では Touch Events にフォールバックする。
+// move/up は window でも受ける (capture が効かなくても指を離せば必ず止まるように)
+if (window.PointerEvent) {
+  const onDown = el => e => {
+    if (e.pointerType === 'mouse') return;
+    enableTouchUI();
+    if (el === btnDash) { if (dashStart(e.pointerId)) e.preventDefault(); return; }
+    if (el === btnSkill) { btnSkill.classList.add('active'); skillTap(); e.preventDefault(); return; }
+    if (joyStart(e.pointerId, e.clientX, e.clientY)) {
+      try { el.setPointerCapture(e.pointerId); } catch (_) { /* capture 失敗時も window 側で追跡する */ }
+      e.preventDefault();
+    }
+  };
+  joyZone.addEventListener('pointerdown', onDown(joyZone));
+  joyEl.addEventListener('pointerdown', onDown(joyEl));
+  btnDash.addEventListener('pointerdown', onDown(btnDash));
+  btnSkill.addEventListener('pointerdown', onDown(btnSkill));
+  window.addEventListener('pointermove', e => joyMove(e.pointerId, e.clientX, e.clientY), { passive: true });
+  window.addEventListener('pointerup', e => { joyEnd(e.pointerId); dashEnd(e.pointerId); btnSkill.classList.remove('active'); });
+  window.addEventListener('pointercancel', e => { joyEnd(e.pointerId); dashEnd(e.pointerId); btnSkill.classList.remove('active'); });
+} else {
+  const tStart = el => e => {
+    enableTouchUI();
+    for (const t of e.changedTouches) {
+      if (el === btnDash) { if (dashStart(t.identifier)) e.preventDefault(); }
+      else if (el === btnSkill) { btnSkill.classList.add('active'); skillTap(); e.preventDefault(); }
+      else if (joyStart(t.identifier, t.clientX, t.clientY)) e.preventDefault();
+    }
+  };
+  const tMove = e => { for (const t of e.changedTouches) joyMove(t.identifier, t.clientX, t.clientY); };
+  const tEnd = e => {
+    for (const t of e.changedTouches) { joyEnd(t.identifier); dashEnd(t.identifier); }
+    btnSkill.classList.remove('active');
+  };
+  for (const el of [joyZone, joyEl]) {
+    el.addEventListener('touchstart', tStart(el), { passive: false });
+    el.addEventListener('touchmove', tMove, { passive: false });
+    el.addEventListener('touchend', tEnd);
+    el.addEventListener('touchcancel', tEnd);
+  }
+  btnDash.addEventListener('touchstart', tStart(btnDash), { passive: false });
+  btnDash.addEventListener('touchend', tEnd);
+  btnDash.addEventListener('touchcancel', tEnd);
+  btnSkill.addEventListener('touchstart', tStart(btnSkill), { passive: false });
+  btnSkill.addEventListener('touchend', tEnd);
+  btnSkill.addEventListener('touchcancel', tEnd);
+  window.addEventListener('touchmove', tMove, { passive: true });
+  window.addEventListener('touchend', tEnd);
+  window.addEventListener('touchcancel', tEnd);
+}
+// プレイ中の画面スクロール/引っ張り更新を止める (touch-action: none の保険)
+document.getElementById('gameScreen').addEventListener('touchmove', e => { if (phase === 'playing') e.preventDefault(); }, { passive: false });
 // 長押しやドラッグでの誤作動・メニュー表示を防ぐ
 document.getElementById('touchControls').addEventListener('contextmenu', e => e.preventDefault());
 
@@ -452,16 +519,29 @@ function makeAvatar(p) {
   return { group, ring, target: new THREE.Vector3(p.x, 0, p.z) };
 }
 
+// 表示領域に合わせてレンダラとカメラをリサイズする
+// (スマホのアドレスバー伸縮・画面回転でも追従するよう複数イベントで呼ぶ)
+function resizeRenderer() {
+  if (!renderer || !camera) return;
+  const el = document.getElementById('gameScreen');
+  const w = el.clientWidth || window.innerWidth;
+  const h = el.clientHeight || window.innerHeight;
+  if (!w || !h) return;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+}
+
 function initThree() {
   if (renderer) return;
   const canvas = document.getElementById('gameCanvas');
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x07031a);
   scene.fog = new THREE.Fog(0x07031a, 30, 80);
-  camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
+  camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
+  resizeRenderer();
   clock = new THREE.Clock();
 
   scene.add(new THREE.AmbientLight(0x8877ff, 0.7));
@@ -495,10 +575,9 @@ function initThree() {
     scene.add(b);
   }
 
-  window.addEventListener('resize', () => {
-    camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
-  });
+  window.addEventListener('resize', resizeRenderer);
+  window.addEventListener('orientationchange', () => setTimeout(resizeRenderer, 120));
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', resizeRenderer);
   animate();
 }
 
@@ -569,7 +648,7 @@ function updateHUD() {
   const mp = state.players.find(p => p.id === MY_ID);
   if (mp) {
     const cd = document.getElementById('skillCd');
-    cd.textContent = mp.cooldownLeft > 0 ? `あと ${(mp.cooldownLeft / 1000).toFixed(1)}秒` : '準備OK (Space)';
+    cd.textContent = mp.cooldownLeft > 0 ? `あと ${(mp.cooldownLeft / 1000).toFixed(1)}秒` : (document.body.classList.contains('touch') ? '準備OK' : '準備OK (Space)');
     const cdMax = CHARACTERS[mp.charId].cooldown;
     document.getElementById('barMp').style.width = `${mp.cooldownLeft > 0 ? 100 * (1 - mp.cooldownLeft / cdMax) : 100}%`;
     document.getElementById('barEn').style.width = `${stamina}%`;
