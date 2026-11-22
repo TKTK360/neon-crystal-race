@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>ネオンクリスタルレース | 1人用 GitHub Pages版</title>
 <link rel="stylesheet" href="style.css">
 <script type="importmap">
@@ -19,6 +19,7 @@
     <button id="joinBtn">▶ ゲームスタート</button>
     <p id="joinError" class="error"></p>
     <p class="howto">操作: WASD / 矢印キーで移動 ・ Shiftでダッシュ ・ Space / Eでスキル</p>
+    <p class="howto touchOnly">タッチ操作: 左下スティックで移動 ・ ダッシュボタン長押しでダッシュ ・ スキルボタンでスキル</p>
     <p class="howto">残りの3枠はCPUが別キャラで参加します</p>
   </div>
 
@@ -36,6 +37,14 @@
       <div id="skillBox">スキル: <span id="skillName">-</span> <span id="skillCd">準備OK</span></div>
       <canvas id="minimap" width="150" height="150"></canvas>
       <div id="eventLog"></div>
+      <!-- タッチ操作 (タッチ端末のみ表示) -->
+      <div id="touchControls">
+        <div id="joystick"><div id="joystickKnob"></div></div>
+        <div id="touchButtons">
+          <button id="btnDash" type="button">ダッシュ</button>
+          <button id="btnSkill" type="button">スキル</button>
+        </div>
+      </div>
       <div id="centerMsg" class="hidden"></div>
       <div id="resultPanel" class="hidden">
         <h2 id="resultTitle">結果</h2>

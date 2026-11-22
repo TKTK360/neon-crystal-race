@@ -1,4 +1,5 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { overscroll-behavior: none; }
 body { font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif; background: #07031a; color: #eef; overflow: hidden; }
 .hidden { display: none !important; }
 
@@ -20,10 +21,12 @@ body { font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif; backgro
 #joinBtn:hover { filter: brightness(1.2); }
 .error { color: #ff6b7a; min-height: 1em; }
 .howto { color: #889; font-size: 13px; }
+.touchOnly { display: none; }
+body.touch .touchOnly { display: block; }
 
 /* ---- ゲーム画面 / HUD ---- */
-#gameScreen { position: fixed; inset: 0; }
-#gameCanvas { width: 100%; height: 100%; display: block; }
+#gameScreen { position: fixed; inset: 0; touch-action: none; }
+#gameCanvas { width: 100%; height: 100%; display: block; touch-action: none; }
 #hud { position: absolute; inset: 0; pointer-events: none; }
 #timer { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-size: 34px; font-weight: bold; color: #fff;
   text-shadow: 0 0 12px #5ec8ff; background: #12082ecc; padding: 2px 22px; border-radius: 999px; border: 2px solid #5ec8ff66; }
@@ -54,3 +57,24 @@ body { font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif; backgro
   background: linear-gradient(90deg, #ff4da6, #a64dff); }
 #resultPanel button:hover { filter: brightness(1.2); }
 #backBtn { background: linear-gradient(90deg, #3d7bff, #5ec8ff) !important; }
+
+/* ---- タッチ操作 (タッチ端末のみ・ゲーム画面内だけ表示) ---- */
+#touchControls { display: none; position: absolute; inset: 0; pointer-events: none; }
+body.touch #touchControls { display: block; }
+#joystick { position: absolute; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  left: calc(18px + env(safe-area-inset-left)); bottom: calc(118px + env(safe-area-inset-bottom));
+  width: 120px; height: 120px; border-radius: 50%;
+  background: #12082e99; border: 2px solid #5ec8ff88; box-shadow: 0 0 16px #5ec8ff44, inset 0 0 24px #a64dff33; }
+#joystickKnob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 30%, #ff8ac2, #ff4da6 60%, #a64dff);
+  border: 2px solid #ffd9f2aa; box-shadow: 0 0 14px #ff4da699; }
+#touchButtons { position: absolute; pointer-events: none;
+  right: calc(18px + env(safe-area-inset-right)); bottom: calc(118px + env(safe-area-inset-bottom));
+  display: flex; align-items: flex-end; gap: 14px; }
+#touchButtons button { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  border-radius: 50%; color: #fff; font-weight: bold; cursor: pointer;
+  background: #12082eb3; text-shadow: 0 0 6px #000; }
+#btnDash { width: 64px; height: 64px; font-size: 12px; border: 2px solid #5ec8ffaa; box-shadow: 0 0 12px #5ec8ff44; }
+#btnSkill { width: 76px; height: 76px; font-size: 15px; border: 2px solid #ff7ad9aa; box-shadow: 0 0 14px #ff4da655; }
+#touchButtons button.active { filter: brightness(1.5); transform: scale(0.93); }

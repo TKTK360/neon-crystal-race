@@ -115,6 +115,81 @@ document.getElementById('backBtn').onclick = () => location.reload();
 window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if (e.key === ' ') e.preventDefault(); });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
+// ============ タッチ操作 (仮想ジョイスティック + ボタン) ============
+// キーボードと同じ入力経路に流す: 移動は touchVec / keys、ダッシュは keys['shift']、スキルは useSkill()
+const touchVec = { x: 0, z: 0, active: false };
+const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+if (isTouchDevice) document.body.classList.add('touch');
+
+const joyEl = document.getElementById('joystick');
+const joyKnob = document.getElementById('joystickKnob');
+const JOY_RADIUS = 40;   // ノブの最大移動量 (px)
+const JOY_DEADZONE = 0.15;
+let joyPointerId = null;
+
+function setKnob(ox, oy) {
+  joyKnob.style.transform = `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px))`;
+}
+function joyUpdate(e) {
+  const rect = joyEl.getBoundingClientRect();
+  let ox = e.clientX - (rect.left + rect.width / 2);
+  let oy = e.clientY - (rect.top + rect.height / 2);
+  const len = Math.hypot(ox, oy);
+  if (len > JOY_RADIUS) { ox = ox / len * JOY_RADIUS; oy = oy / len * JOY_RADIUS; }
+  setKnob(ox, oy);
+  let vx = ox / JOY_RADIUS, vz = oy / JOY_RADIUS;
+  if (Math.hypot(vx, vz) < JOY_DEADZONE) { vx = 0; vz = 0; }
+  touchVec.x = vx; touchVec.z = vz; touchVec.active = true;
+}
+function joyReset() {
+  joyPointerId = null;
+  touchVec.x = 0; touchVec.z = 0; touchVec.active = false;
+  setKnob(0, 0);
+}
+joyEl.addEventListener('pointerdown', e => {
+  if (joyPointerId !== null) return;
+  joyPointerId = e.pointerId;
+  joyEl.setPointerCapture(e.pointerId);
+  e.preventDefault();
+  joyUpdate(e);
+});
+joyEl.addEventListener('pointermove', e => { if (e.pointerId === joyPointerId) joyUpdate(e); });
+joyEl.addEventListener('pointerup', e => { if (e.pointerId === joyPointerId) joyReset(); });
+joyEl.addEventListener('pointercancel', e => { if (e.pointerId === joyPointerId) joyReset(); });
+
+// ダッシュボタン: 押している間だけ Shift と同じ扱い
+const btnDash = document.getElementById('btnDash');
+let dashPointerId = null;
+btnDash.addEventListener('pointerdown', e => {
+  if (dashPointerId !== null) return;
+  dashPointerId = e.pointerId;
+  btnDash.setPointerCapture(e.pointerId);
+  keys['shift'] = true;
+  btnDash.classList.add('active');
+  e.preventDefault();
+});
+function dashEnd(e) {
+  if (e.pointerId !== dashPointerId) return;
+  dashPointerId = null;
+  keys['shift'] = false;
+  btnDash.classList.remove('active');
+}
+btnDash.addEventListener('pointerup', dashEnd);
+btnDash.addEventListener('pointercancel', dashEnd);
+
+// スキルボタン: タップで Space / E と同じ発動 (クールダウンは useSkill 側で管理)
+const btnSkill = document.getElementById('btnSkill');
+btnSkill.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  btnSkill.classList.add('active');
+  const p = me();
+  if (p) useSkill(p);
+});
+btnSkill.addEventListener('pointerup', () => btnSkill.classList.remove('active'));
+btnSkill.addEventListener('pointercancel', () => btnSkill.classList.remove('active'));
+// 長押しやドラッグでの誤作動・メニュー表示を防ぐ
+document.getElementById('touchControls').addEventListener('contextmenu', e => e.preventDefault());
+
 function showEvent(text) {
   const log = document.getElementById('eventLog');
   if (!log) return;
@@ -206,6 +281,8 @@ function updatePlayer(dt, now) {
   if (keys['s'] || keys['arrowdown']) dz += 1;
   if (keys['a'] || keys['arrowleft']) dx -= 1;
   if (keys['d'] || keys['arrowright']) dx += 1;
+  // 仮想ジョイスティックが倒れていればそちらを優先 (アナログ量つき)
+  if (touchVec.active && (touchVec.x !== 0 || touchVec.z !== 0)) { dx = touchVec.x; dz = touchVec.z; }
   const moving = dx !== 0 || dz !== 0;
   const dash = keys['shift'] && stamina > 0 && moving;
   stamina = THREE.MathUtils.clamp(stamina + (dash ? -38 * dt : 22 * dt), 0, 100);
@@ -213,9 +290,11 @@ function updatePlayer(dt, now) {
   let speed = speedOf(p, now);
   if (dash) speed *= 1.6;
   if (moving) {
-    const len = Math.hypot(dx, dz); dx /= len; dz /= len;
-    p.x = clampArena(p.x + dx * speed * dt);
-    p.z = clampArena(p.z + dz * speed * dt);
+    const len = Math.hypot(dx, dz);
+    const mag = Math.min(1, len);   // キーボードは常に1、ジョイスティックは倒し具合
+    dx /= len; dz /= len;
+    p.x = clampArena(p.x + dx * speed * mag * dt);
+    p.z = clampArena(p.z + dz * speed * mag * dt);
     p.angle = Math.atan2(dx, dz);
   }
   if (keys[' '] || keys['e']) useSkill(p);
