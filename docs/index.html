@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ネオンクリスタルレース | 1人用 GitHub Pages版</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+  <!-- キャラ選択画面 -->
+  <div id="joinScreen">
+    <h1>✦ ネオンクリスタルレース ✦</h1>
+    <p class="sub">1人用 (CPU対戦) ・ GitHub Pages版 — 3分間でクリスタルを集めよう</p>
+    <input id="nameInput" type="text" maxlength="12" placeholder="名前を入力 (例: たろう)">
+    <div id="charGrid"></div>
+    <button id="joinBtn">▶ ゲームスタート</button>
+    <p id="joinError" class="error"></p>
+    <p class="howto">操作: WASD / 矢印キーで移動 ・ Shiftでダッシュ ・ Space / Eでスキル</p>
+    <p class="howto">残りの3枠はCPUが別キャラで参加します</p>
+  </div>
+
+  <!-- ゲーム画面 -->
+  <div id="gameScreen" class="hidden">
+    <canvas id="gameCanvas"></canvas>
+    <div id="hud">
+      <div id="timer">3:00</div>
+      <div id="scores"></div>
+      <div id="bars">
+        <div class="bar"><span>HP</span><div class="track"><div id="barHp" class="fill hp"></div></div></div>
+        <div class="bar"><span>MP</span><div class="track"><div id="barMp" class="fill mp"></div></div></div>
+        <div class="bar"><span>EN</span><div class="track"><div id="barEn" class="fill en"></div></div></div>
+      </div>
+      <div id="skillBox">スキル: <span id="skillName">-</span> <span id="skillCd">準備OK</span></div>
+      <canvas id="minimap" width="150" height="150"></canvas>
+      <div id="eventLog"></div>
+      <div id="centerMsg" class="hidden"></div>
+      <div id="resultPanel" class="hidden">
+        <h2 id="resultTitle">結果</h2>
+        <div id="resultList"></div>
+        <button id="restartBtn">🔁 もう一度遊ぶ</button>
+        <button id="backBtn">キャラ選択に戻る</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>
