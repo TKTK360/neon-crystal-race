@@ -1,0 +1,1 @@
+{"dependencies":{"ws":"^8.18.0"},"description":"three.js 少人数リアルタイム Web ゲーム (プロトタイプ)","engines":{"node":">=18"},"main":"server.js","name":"altare-three-game","private":true,"scripts":{"start":"node server.js","test:ws":"node test/ws-test.js"},"type":"commonjs","version":"0.1.0"}
